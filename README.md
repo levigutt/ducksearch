@@ -1,3 +1,3 @@
 # DUCKSEARCH
 
-for making searches on duckduckgo.com programatically
+for making searches on duckduckgo.com programmatically
