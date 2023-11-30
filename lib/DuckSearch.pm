@@ -6,11 +6,14 @@ use Data::Dumper qw<Dumper>;
 
 use namespace::clean;
 
+our $UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0";
+
 sub new
 {
     my $class = shift;
     my $self =  {  safe   => 1
                 ,  cache  => ''
+                ,  locale => 'en-US'
                 ,  @_
                 };
     bless $self, $class;
@@ -48,6 +51,39 @@ sub news
     $self->_search(shift, 'news.js');
 }
 
+sub cache
+{
+    my $self = shift;
+    if( @_ )
+    {
+        ($self->{cache}) = @_;
+        return $self;
+    }
+    $self->{cache};
+}
+
+sub safe
+{
+    my $self = shift;
+    if( @_ )
+    {
+        ($self->{safe}) = @_;
+        return $self;
+    }
+    $self->{safe};
+}
+
+sub locale
+{
+    my $self = shift;
+    if( @_ )
+    {
+        ($self->{locale}) = @_;
+        return $self;
+    }
+    $self->{locale};
+}
+
 sub _search
 {
     my $self = shift;
@@ -56,13 +92,16 @@ sub _search
     $area //= 'd.js';
     $f //= ',,,,,';
 
-    my $search_url = sprintf(  "https://duckduckgo.com/%s?o=json&q=%s&vqd=%s&f=%s&p=%d"
-                            ,  $area
-                            ,  $phrase
-                            ,  $self->_get_vqd($phrase)
-                            ,  $f
-                            ,  $self->{safe}   // 1
-                            );
+    my %params = (  o           => 'json'
+                 ,  q           => $phrase
+                 ,  vqd         => $self->_get_vqd($phrase)
+                 ,  f           => $f
+                 ,  p           => $self->{safe} // 1
+                 ,  bing_market => $self->{locale} // 'en-US'
+                 );
+    my $query = "$area?" . join "&", map { "$_=$params{$_}" }
+                                     keys %params;
+    my $search_url = sprintf 'https://duckduckgo.com/%s', $query;
     my $ua = UserAgent->new();
     my $res = $ua->get($search_url);
     die sprintf("could not GET %s: %s\n", $search_url, $res->status_line)
@@ -104,7 +143,7 @@ package UserAgent;
 use base 'LWP::UserAgent';
 sub _agent
 {
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0";
+    $DuckSearch::UserAgent;
 }
 
 
