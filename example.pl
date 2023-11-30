@@ -5,7 +5,7 @@ use DuckSearch;
 
 my $phrase = shift or die "Missing search phrase.\n";
 
-my $duck = DuckSearch->new(search => 'images', cache => '.vqdcache');
-my @images = $duck->search($phrase);
+my $duck = DuckSearch->new(cache => '.vqdcache');
+my @images = $duck->images($phrase);
 
 print $images[rand @images]->{image};

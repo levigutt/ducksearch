@@ -6,53 +6,70 @@ use Data::Dumper qw<Dumper>;
 
 use namespace::clean;
 
-my %js = (  web    => 'd.js'
-         ,  images => 'i.js'
-         ,  videos => 'v.js'
-         ,  news   => 'news.js'
-         );
-
-# lookup table to transform result so that all results have `title` and `url`
-my %map = (  web    => sub { { title => $_->{t}, url => $_->{u}, $_->%* } }
-          ,  images => sub { { url => $_->{image}, page => $_->{url}, $_->%* } }
-          ,  videos => sub { { url => $_->{content}, $_->%* } }
-          ,  news   => sub { $_ }
-          );
-
 sub new
 {
     my $class = shift;
-    my $self =  {  search => 'web'
-                ,  type   => ''
-                ,  safe   => 1
+    my $self =  {  safe   => 1
                 ,  cache  => ''
                 ,  @_
                 };
-    die "invalid search: $self->{search}\n"
-        unless defined $js{$self->{search}};
     bless $self, $class;
 }
 
-sub search
+sub web
 {
     my $self = shift;
     die "missing search phrase\n" unless @_;
-    my $phrase = shift;
+    map { { title => $_->{t}, url => $_->{u}, $_->%* } }
+        $self->_search(shift, 'd.js');
+}
+
+sub images
+{
+    my $self = shift;
+    die "missing search phrase\n" unless @_;
+    my ($phrase, $type) = @_;
+    map { { url => $_->{image}, page => $_->{url}, $_->%* } }
+        $self->_search($phrase, 'i.js', defined $type ? ",,,type:$type,," : ',,,,,');
+}
+
+sub videos
+{
+    my $self = shift;
+    die "missing search phrase\n" unless @_;
+    map { { url => $_->{content}, $_->%* } }
+        $self->_search(shift, 'v.js');
+}
+
+sub news
+{
+    my $self = shift;
+    die "missing search phrase\n" unless @_;
+    $self->_search(shift, 'news.js');
+}
+
+sub _search
+{
+    my $self = shift;
+    die "missing search phrase\n" unless @_;
+    my ($phrase, $area, $f) = @_;
+    $area //= 'd.js';
+    $f //= ',,,,,';
+
     my $search_url = sprintf(  "https://duckduckgo.com/%s?o=json&q=%s&vqd=%s&f=%s&p=%d"
-                            ,  $js{$self->{search} // 'web'}
+                            ,  $area
                             ,  $phrase
                             ,  $self->_get_vqd($phrase)
-                            ,  $self->_get_f
+                            ,  $f
                             ,  $self->{safe}   // 1
                             );
     my $ua = UserAgent->new();
-    my $res   = $ua->get($search_url);
+    my $res = $ua->get($search_url);
     die sprintf("could not GET %s: %s\n", $search_url, $res->status_line)
         if $res->is_error;
     my $json = decode_json($res->decoded_content);
-    map { $map{$self->{search} // 'web'}->() } $json->{results}->@*;
+    $json->{results}->@*;
 }
-
 
 sub _get_vqd
 {
@@ -69,7 +86,7 @@ sub _get_vqd
                          );
         my $ua = UserAgent->new();
         my $res = $ua->get($ddg);
-        die sprintf("could not GET %s: %s\n", $search_url, $res->status_line)
+        die sprintf("could not GET %s: %s\n", $ddg, $res->status_line)
             if $res->is_error;
         my ($vqd) = $res->decoded_content =~ /vqd="([^"]+)"/;
         return $vqd unless -e -f $self->{cache};
@@ -96,7 +113,7 @@ package UserAgent;
 use base 'LWP::UserAgent';
 sub _agent
 {
-    "Mozilla/8.0";
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0";
 }
 
 
