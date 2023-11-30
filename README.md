@@ -4,7 +4,7 @@ for making searches on duckduckgo.com programmatically
 
 ## SYNOPSIS
 
-duckduckgo uses a key called `vqd` that is unique to the search phrase to
+DuckDuckGo uses a key called `vqd` that is unique to the search phrase to
 prevent simple scraping of results. this module queries the frontend for the
 key, optionally caches it in a file for later, and uses it to fetch the search
 results.
@@ -21,3 +21,20 @@ my @pics  = $ddg->images('duck');
 my @gifs  = $ddg->images('duck', 'gif');
 my @news  = $ddg->news('duck');
 ```
+
+## DIAGNOSTICS
+
+DuckDuckGo may reject requests if scraping is suspected. changing the UserAgent
+may help.
+
+```sh
+perl -MDuckSearch -E '$d = DuckSearch->new(); say $_->{url} for $d->web("owl");'
+malformed JSON string, neither tag, array, object, number, string or atom, at character offset 0 (before "window.execDeep=func...") at lib/DuckSearch.pm line 109.
+```
+
+```sh
+perl -MDuckSearch -E '$DuckSearch::UserAgent = "Mozilla/5.0"; $d = DuckSearch->new(); say $_->{url} for $d->web("owl");'
+https://en.wikipedia.org/wiki/Owl
+...
+```
+
