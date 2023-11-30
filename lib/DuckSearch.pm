@@ -1,14 +1,10 @@
 package DuckSearch;
 
-use strict;
-use warnings;
-
-use Mojo::UserAgent;
-use Mojo::JSON qw<decode_json>;
+use LWP::UserAgent;
+use JSON::XS;
 use Data::Dumper qw<Dumper>;
 
 use namespace::clean;
-
 
 my %js = (  web    => 'd.js'
          ,  images => 'i.js'
@@ -42,17 +38,18 @@ sub search
     my $self = shift;
     die "missing search phrase\n" unless @_;
     my $phrase = shift;
-    my $search_url = sprintf(  "https://ddg.gg/%s?o=json&q=%s&vqd=%s&f=%s&p=%d"
+    my $search_url = sprintf(  "https://duckduckgo.com/%s?o=json&q=%s&vqd=%s&f=%s&p=%d"
                             ,  $js{$self->{search} // 'web'}
                             ,  $phrase
                             ,  $self->_get_vqd($phrase)
                             ,  $self->_get_f
                             ,  $self->{safe}   // 1
                             );
-    my $ua = Mojo::UserAgent->new(max_redirects => 3);
-    $ua->transactor->name("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0");
-    my $body   = $ua->get($search_url)->result->body;
-    my $json   = decode_json($body);
+    my $ua = UserAgent->new();
+    my $res   = $ua->get($search_url);
+    die sprintf("could not GET %s: %s\n", $search_url, $res->status_line)
+        if $res->is_error;
+    my $json = decode_json($res->decoded_content);
     map { $map{$self->{search} // 'web'}->() } $json->{results}->@*;
 }
 
@@ -67,12 +64,14 @@ sub _get_vqd
     eval do {undef $/; open my $fh, $self->{cache}; <$fh>} if -e -f $self->{cache};
     unless (exists $VAR1->{$phrase})
     {
-        my $ddg = sprintf(  "https://ddg.gg/?q=%s"
+        my $ddg = sprintf(  "https://duckduckgo.com/?q=%s"
                          ,  $phrase
                          );
-        my $ua = Mojo::UserAgent->new(max_redirects => 3);
-        $ua->transactor->name('Firefox');
-        my ($vqd) = $ua->get($ddg)->result->dom('script')->first->all_text =~ /vqd="(.*?)",/;
+        my $ua = UserAgent->new();
+        my $res = $ua->get($ddg);
+        die sprintf("could not GET %s: %s\n", $search_url, $res->status_line)
+            if $res->is_error;
+        my ($vqd) = $res->decoded_content =~ /vqd="([^"]+)"/;
         return $vqd unless -e -f $self->{cache};
         #save cache
         $VAR1->{$phrase} = $vqd;
@@ -91,6 +90,13 @@ sub _get_f
            ,    defined $self->{type} ? "type:$self->{type}"
                                       : ''
            );
+}
+
+package UserAgent;
+use base 'LWP::UserAgent';
+sub _agent
+{
+    "Mozilla/8.0";
 }
 
 
