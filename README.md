@@ -13,7 +13,7 @@ results.
 use lib './lib';
 use DuckSearch;
 
-my $ddg = DuckSearch->new(  cache => '.vqdcache' #file for caching vqds
+my $ddg = DuckSearch->new(  cache => '.vqdcache' # file for caching vqds
                          ,  safe  => 1           # 1 = STRICT, 0 = ON, -1 = OFF
                          );
 my @sites = $ddg->web('duck');
