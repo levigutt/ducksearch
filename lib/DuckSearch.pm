@@ -100,15 +100,6 @@ sub _get_vqd
     $VAR1->{$phrase};
 }
 
-sub _get_f
-{
-    my $self = shift;
-    sprintf(    ",,,%s,,"
-           ,    defined $self->{type} ? "type:$self->{type}"
-                                      : ''
-           );
-}
-
 package UserAgent;
 use base 'LWP::UserAgent';
 sub _agent
