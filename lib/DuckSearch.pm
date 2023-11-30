@@ -9,8 +9,7 @@ use namespace::clean;
 sub new
 {
     my $class = shift;
-    my $self =  {  type   => ''
-                ,  safe   => 1
+    my $self =  {  safe   => 1
                 ,  cache  => ''
                 ,  @_
                 };
@@ -29,8 +28,9 @@ sub images
 {
     my $self = shift;
     die "missing search phrase\n" unless @_;
+    my ($phrase, $type) = @_;
     map { { url => $_->{image}, page => $_->{url}, $_->%* } }
-        $self->_search(shift, 'i.js');
+        $self->_search($phrase, 'i.js', defined $type ? ",,,type:$type,," : ',,,,,');
 }
 
 sub videos
@@ -52,13 +52,15 @@ sub _search
 {
     my $self = shift;
     die "missing search phrase\n" unless @_;
-    my ($phrase, $area) = (@_, "d.js"); #default to web
+    my ($phrase, $area, $f) = @_;
+    $area //= 'd.js';
+    $f //= ',,,,,';
 
     my $search_url = sprintf(  "https://duckduckgo.com/%s?o=json&q=%s&vqd=%s&f=%s&p=%d"
                             ,  $area
                             ,  $phrase
                             ,  $self->_get_vqd($phrase)
-                            ,  $self->_get_f
+                            ,  $f
                             ,  $self->{safe}   // 1
                             );
     my $ua = UserAgent->new();
