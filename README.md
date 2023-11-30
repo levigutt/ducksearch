@@ -10,10 +10,14 @@ key, optionally caches it in a file for later, and uses it to fetch the search
 results.
 
 ```perl
+use lib './lib';
 use DuckSearch;
 
-my $duck = DuckSearch->new(search => 'images', cache => '.vqdcache');
-my @images = $duck->search('owl');
-
-print $images[rand @images]->{image};
+my $ddg = DuckSearch->new(  cache => '.vqdcache' #file for caching vqds
+                         ,  safe  => 1           # 1 = STRICT, 0 = ON, -1 = OFF
+                         );
+my @sites = $ddg->web('duck');
+my @pics  = $ddg->images('duck');
+my @gifs  = $ddg->images('duck', 'gif');
+my @news  = $ddg->news('duck');
 ```
