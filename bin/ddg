@@ -1,0 +1,40 @@
+#!/usr/bin/perl -wl -s
+use strict;
+use lib './lib';
+use List::Util qw<shuffle>;
+use DuckSearch;
+
+our (   $unsafe,  $strict,  $help
+    ,   $limit,   $shuffle, $web
+    ,   $images,  $videos,  $news
+    );
+die <<END if $help || 0 == @ARGV;
+USAGE: ddg [options] search phrase
+    -web        search for webpages (default)
+    -images     search for images
+    -news       search for news articles
+    -videos     search for videoes
+    -limit=N    return only N results
+    -shuffle    randomize order of results
+    -strict     set safe mode to ON
+    -unsafe     set safe mode to OFF
+    -help       show this help info
+
+END
+
+$web = 1 unless $images || $videos || $news ; # default to web
+my $search = "@ARGV";
+my $safe = $strict ? 1 : $unsafe ? -1 : 0;
+my $ddg = DuckSearch->new(safe => $safe);
+
+my @results;
+push @results, map { $_->{url}   } $ddg->web($search)    if $web;
+push @results, map { $_->{image} } $ddg->images($search) if $images;
+push @results, map { $_->{url}   } $ddg->videos($search) if $videos;
+push @results, map { $_->{url}   } $ddg->news($search)   if $news;
+@results = grep { defined } @results;
+
+@results = shuffle @results if $shuffle;
+$limit = $limit ? $limit-1 : $#results;
+
+print for @results[0..$limit];

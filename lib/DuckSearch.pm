@@ -14,6 +14,7 @@ sub new
     my $self =  {  safe   => 1
                 ,  cache  => ''
                 ,  locale => 'en-US'
+                ,  vqds   => {}
                 ,  @_
                 };
     bless $self, $class;
@@ -22,7 +23,7 @@ sub new
 sub web
 {
     my $self = shift;
-    die "missing search phrase\n" unless @_;
+    die "Missing search phrase\n" unless @_;
     map { { title => $_->{t}, url => $_->{u}, $_->%* } }
         $self->_search(shift, 'd.js');
 }
@@ -30,7 +31,7 @@ sub web
 sub images
 {
     my $self = shift;
-    die "missing search phrase\n" unless @_;
+    die "Missing search phrase\n" unless @_;
     my ($phrase, $type) = @_;
     map { { url => $_->{image}, page => $_->{url}, $_->%* } }
         $self->_search($phrase, 'i.js', defined $type ? ",,,type:$type,," : ',,,,,');
@@ -39,7 +40,7 @@ sub images
 sub videos
 {
     my $self = shift;
-    die "missing search phrase\n" unless @_;
+    die "Missing search phrase\n" unless @_;
     map { { url => $_->{content}, $_->%* } }
         $self->_search(shift, 'v.js');
 }
@@ -47,7 +48,7 @@ sub videos
 sub news
 {
     my $self = shift;
-    die "missing search phrase\n" unless @_;
+    die "Missing search phrase\n" unless @_;
     $self->_search(shift, 'news.js');
 }
 
@@ -87,7 +88,7 @@ sub locale
 sub _search
 {
     my $self = shift;
-    die "missing search phrase\n" unless @_;
+    die "Missing search phrase\n" unless @_;
     my ($phrase, $area, $f) = @_;
     $area //= 'd.js';
     $f //= ',,,,,';
@@ -113,11 +114,13 @@ sub _search
 sub _get_vqd
 {
     my $self = shift;
-    die "missing phrase for vqd\n" unless @_;
+    die "Missing phrase for vqd\n" unless @_;
     my $phrase = shift;
+    return $self->{vqds}{$phrase} if exists $self->{vqds}{$phrase};
+
     my $VAR1;
     # load dumped hash
-    eval do {undef $/; open my $fh, $self->{cache}; <$fh>} if -e -f $self->{cache};
+    eval do {undef $/; open my $fh, $self->{cache}; <$fh>} if $self->{cache};
     unless (exists $VAR1->{$phrase})
     {
         my $ddg = sprintf(  "https://duckduckgo.com/?q=%s"
@@ -125,17 +128,17 @@ sub _get_vqd
                          );
         my $ua = UserAgent->new();
         my $res = $ua->get($ddg);
-        die sprintf("could not GET %s: %s\n", $ddg, $res->status_line)
+        die sprintf("Could not GET %s: %s\n", $ddg, $res->status_line)
             if $res->is_error;
         my ($vqd) = $res->decoded_content =~ /vqd="([^"]+)"/;
-        return $vqd unless -e -f $self->{cache};
+        $self->{vqds}{$phrase} = $vqd;
+        return $vqd unless $self->{cache};
         #save cache
         $VAR1->{$phrase} = $vqd;
-        open my $fh, '>', $self->{cache}
-            or die "Could not save to cache: $!\n";
-        print $fh Dumper($VAR1) or warn "could not write to $self->{cache}";
+        open my $fh, '>', $self->{cache} or die "Could not open $self->{cache}: $!\n";
+        print $fh Dumper($VAR1) or die "Could not write to $self->{cache}: $!\n";
     }
-    $self->{vqd} = $VAR1;
+    $self->{vqds} = { $VAR1->%*, $self->{vqds}->%* };
     $VAR1->{$phrase};
 }
 
