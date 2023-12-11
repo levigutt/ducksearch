@@ -1,7 +1,7 @@
 package DuckSearch;
 
-use LWP::UserAgent;
-use JSON::XS;
+use HTTP::Tiny;
+use JSON::PP;
 use Data::Dumper qw<Dumper>;
 
 use namespace::clean;
@@ -103,11 +103,10 @@ sub _search
     my $query = "$area?" . join "&", map { "$_=$params{$_}" }
                                      keys %params;
     my $search_url = sprintf 'https://duckduckgo.com/%s', $query;
-    my $ua = UserAgent->new();
-    my $res = $ua->get($search_url);
-    die sprintf("could not GET %s: %s\n", $search_url, $res->status_line)
-        if $res->is_error;
-    my $json = decode_json($res->decoded_content);
+    my $res = HTTP::Tiny->new(agent => $UserAgent)->get($search_url);
+    die sprintf("could not GET %s: %s\n", $search_url, $res->{status})
+        unless $res->{success};
+    my $json = decode_json($res->{content});
     $json->{results}->@*;
 }
 
@@ -123,31 +122,29 @@ sub _get_vqd
     eval do {undef $/; open my $fh, $self->{cache}; <$fh>} if $self->{cache};
     unless (exists $VAR1->{$phrase})
     {
-        my $ddg = sprintf(  "https://duckduckgo.com/?q=%s"
+        my $ddg = sprintf(  "https://html.duckduckgo.com/html/?q=%s"
                          ,  $phrase
                          );
-        my $ua = UserAgent->new();
-        my $res = $ua->get($ddg);
-        die sprintf("Could not GET %s: %s\n", $ddg, $res->status_line)
-            if $res->is_error;
-        my ($vqd) = $res->decoded_content =~ /vqd="([^"]+)"/;
-        $self->{vqds}{$phrase} = $vqd;
-        return $vqd unless $self->{cache};
+        my $res = HTTP::Tiny->new(agent => $UserAgent)->post($ddg);
+        die sprintf("Could not POST %s: %s\n", $ddg, $res->{status})
+            unless $res->{success};
+        my @inputs = $res->{content} =~ /(<input[^>]*>)/g;
+        my %fields;
+        for (@inputs)
+        {
+            my %atts = /(\w+)="([^"]*)"/g;
+            %fields = (%fields, @atts{'name', 'value'})
+                if defined $atts{name};
+        }
+        $self->{vqds}{$phrase} = $fields{vqd};
+        return $fields{vqd} unless $self->{cache};
         #save cache
-        $VAR1->{$phrase} = $vqd;
+        $VAR1->{$phrase} = $fields{vqd};
         open my $fh, '>', $self->{cache} or die "Could not open $self->{cache}: $!\n";
         print $fh Dumper($VAR1) or die "Could not write to $self->{cache}: $!\n";
     }
     $self->{vqds} = { $VAR1->%*, $self->{vqds}->%* };
     $VAR1->{$phrase};
 }
-
-package UserAgent;
-use base 'LWP::UserAgent';
-sub _agent
-{
-    $DuckSearch::UserAgent;
-}
-
 
 1;
