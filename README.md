@@ -36,7 +36,8 @@ https://en.wikipedia.org/wiki/Duck
 
 - `-web` search for web sites (default behaviour)
 - `-news` search for news articles
-- `-images` search for images; returns url for the image file
+- `-images[=photo|clipart|gif|transparent|line]` search for images of optional
+  type; returns url for the image files.
 - `-videos` search for videos; returns the playable url
 - `-limit=x` limits the number of results
 - `-shuffle` will shuffle put the results in random order

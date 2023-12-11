@@ -10,15 +10,15 @@ our (   $unsafe,  $strict,  $help
     );
 die <<END if $help || 0 == @ARGV;
 USAGE: ddg [options] search phrase
-    -web        search for webpages (default)
-    -images     search for images
-    -news       search for news articles
-    -videos     search for videoes
-    -limit=N    return only N results
-    -shuffle    randomize order of results
-    -strict     set safe mode to ON
-    -unsafe     set safe mode to OFF
-    -help       show this help info
+    -web            search for webpages (default)
+    -images[=type]  search for images
+    -news           search for news articles
+    -videos         search for videoes
+    -limit=N        return only N results
+    -shuffle        randomize order of results
+    -strict         set safe mode to ON
+    -unsafe         set safe mode to OFF
+    -help           show this help info
 
 END
 
@@ -26,12 +26,14 @@ $web = 1 unless $images || $videos || $news ; # default to web
 my $search = "@ARGV";
 my $safe = $strict ? 1 : $unsafe ? -1 : 0;
 my $ddg = DuckSearch->new(safe => $safe);
+my $type;
+$type = $images if $images && $images ne 1;
 
 my @results;
-push @results, map { $_->{url}   } $ddg->web($search)    if $web;
-push @results, map { $_->{image} } $ddg->images($search) if $images;
-push @results, map { $_->{url}   } $ddg->videos($search) if $videos;
-push @results, map { $_->{url}   } $ddg->news($search)   if $news;
+push @results, map { $_->{url}   } $ddg->web($search)           if $web;
+push @results, map { $_->{image} } $ddg->images($search, $type) if $images;
+push @results, map { $_->{url}   } $ddg->videos($search)        if $videos;
+push @results, map { $_->{url}   } $ddg->news($search)          if $news;
 @results = grep { defined } @results;
 
 @results = shuffle @results if $shuffle;
