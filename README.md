@@ -23,7 +23,7 @@ my @news  = $ddg->news('duck');
 
 ## COMMAND LINE UTILITY
 
-the repo bundles a binary (`bin/ddg`) for simple cli usage:
+the repo bundles a executable (`bin/ddg`) for simple cli usage:
 
 ```sh
 $ ddg -limit=3 ducks
